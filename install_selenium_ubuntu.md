@@ -11,7 +11,7 @@ sudo apt-get install -y unzip xvfb libxi6 libgconf-2-4
 ## Download and install chrome
 `sudo curl -sS -o - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add`
 `sudo nano /etc/apt/sources.list.d/google-chrome.list`
-Add `/etc/apt/sources.list.d/google-chrome.list` to the file
+Add `deb [arch=amd64]  http://dl.google.com/linux/chrome/deb/ stable main` to the file
 `sudo apt-get -y update`
 `sudo apt-get -y install google-chrome-stable`
 
