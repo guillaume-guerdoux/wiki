@@ -22,17 +22,17 @@ Modify the ssh listening port
 ```
 sudo nano /etc/ssh/sshd_config
 ```
-Replace the 22 port by another port 
+Replace the 22 port by another port
 ```
 # What ports, IPs and protocols we listen for
 Port 22
-``` 
+```
 Restart ssh
 ```
 systemctl restart sshd
 ```
 Go back to local and add the Host and the port to `~/.ssh/config` file
-Need to add at the end of the file 
+Need to add at the end of the file
 ```
 Host YOUR IP
 	Port YOUR PORT
@@ -79,6 +79,9 @@ done
 Make the post-receive executable by typing `sudo chmod +x post-receive`
 Go back to your local git folder and add the remote `git remote add production guillaume@XX.XX.XX.XX:name-project.git`
 Then each time you want to push to your remote server, run `git push production master`
+
+For preprod, if you have the error message `remote: fatal: You are on a branch yet to be born`
+Got to server in the git projet and in the HEAD file, replace master by the name of your branch
 
 Then transfer to your server the files `localsettings.py` into the same folder as settings.py (for django)
 and `localVariables.js` for Vue.js
@@ -127,7 +130,7 @@ Install globally uwsgi `sudo -H pip3 install uwsgi`
 Uwsgi needs to use : `/usr/bin//usr/local/bin/uwsgi`
 Add guillaume to www-data group `sudo usermod -a -G www-data guillaume`
 
-Go to your backend folder and create `nano uwsgi_params` with : 
+Go to your backend folder and create `nano uwsgi_params` with :
 ```
 uwsgi_param  QUERY_STRING       $query_string;
 uwsgi_param  REQUEST_METHOD     $request_method;
@@ -148,7 +151,7 @@ uwsgi_param  SERVER_NAME        $server_name;
 ```
 Create a folder `sudo mkdir -p /etc/uwsgi/sites`
 Create the file `sudo nano /etc/uwsgi/sites/project_uwsgi.ini`
-The file is : 
+The file is :
 ```
 [uwsgi]
 project = projectBackEnd
@@ -170,7 +173,7 @@ vacuum = true
 
 
 Create a systemd Unit File for uWSGI `sudo nano /etc/systemd/system/uwsgi.service`
-And add : 
+And add :
 ```
 [Unit]
 Description=uWSGI Emperor service
@@ -195,7 +198,7 @@ Enable uwsgi en startup : `sudo systemctl enable uwsgi`
 Install nginx `sudo apt-get install nginx`
 Remove the default file by doing `sudo rm /etc/nginx/sites-enabled/default`
 Create file `nano project_django_nginx.conf`
-Add and adapt to the file 
+Add and adapt to the file
 ```
 # project_django_nginx.conf
 # the upstream component nginx needs to connect to
@@ -208,7 +211,7 @@ server {
     # the port your site will be served on
     listen      8443 ssl;
     # the domain name it will serve for
-    server_name XX.XX.XX.XX domain.fr; 
+    server_name XX.XX.XX.XX domain.fr;
     charset     utf-8;
 
     ssl_certificate       /etc/ssl/domain.fr.chained.crt;
@@ -235,7 +238,7 @@ server {
         proxy_set_header  X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header  X-Forwarded-Proto https;
     }
-    
+
 }
 ```
 
@@ -263,7 +266,7 @@ echo "Redeploy uwsgi"
 sudo /bin/systemctl restart uwsgi.service
 ```
 
-Verify if it's working ! 
+Verify if it's working !
 
 
 ## 4. Vue configuration
@@ -290,35 +293,35 @@ server {
 
 server {
     # the port your site will be served on
-    # the port your site will be served on	
+    # the port your site will be served on
     listen      443 ssl http2;
     listen [::]:443 ssl http2;
 
     root /home/guillaume/project-deploy/project-front-end;
     index index.html index.htm;
-    
+
     server_name XX.XX.XX.XX domain.fr;
 
     charset     utf-8;
 
     error_page 404 /index.html;
-    
+
     ssl_certificate      /etc/ssl/domain.fr.chained.crt;
     ssl_certificate_key  /etc/ssl/domain_fr.key;
-    
+
     # max upload size
     client_max_body_size 10M;   # adjust to taste
-    
+
     #gzip_static on;
-    
+
     location / {
 	root /home/guillaume/project-deploy/project-front-end/dist;
-	
+
 	expires -1;
         add_header Pragma "no-cache";
         add_header Cache-Control "no-store, no-cache, must-revalidate, post-check=0, pre-check=0";
 
-	try_files $uri /index.html;	
+	try_files $uri /index.html;
     }
 }
 ```
@@ -330,7 +333,7 @@ Install redis `sudo apt-get install redis-server` and enable it `sudo systemctl 
 Install supervisor `sudo apt-get install supervisor`
 
 Create the celery logs file `nano /home/guillaume/project-deploy/projectBackEnd/celery_logs`
-Create a celery conf with `sudo nano /etc/supervisor/conf.d/celery_worker.conf` and add into the file 
+Create a celery conf with `sudo nano /etc/supervisor/conf.d/celery_worker.conf` and add into the file
 ```
 ; ==================================
 ;  celery worker supervisor
@@ -347,7 +350,7 @@ stderr_logfile=/home/guillaume/project-deploy/projectBackEnd/celery_logs/worker-
 stdout_logfile_maxbytes=50
 stderr_logfile_maxbytes=50
 stdout_logfile_backups=10
-stderr_logfile_backups=10 
+stderr_logfile_backups=10
 autostart=true
 autorestart=true
 startsecs=10
@@ -364,7 +367,7 @@ stopasgroup=true
 priority=1000
 ```
 
-Launch it by typing : 
+Launch it by typing :
 ```
 sudo supervisorctl reread
 sudo supervisorctl update
@@ -377,8 +380,8 @@ Add the celery restart on hook post-receive by adding `sudo /usr/bin/supervisorc
 
 ## 6. Flower configuration
 Create a flower logs folder in backend folder : `mkdir flower_logs`
-Add a flower supervisor by typing `sudo nano /etc/supervisor/conf.d/flower.conf` 
-Copy this : 
+Add a flower supervisor by typing `sudo nano /etc/supervisor/conf.d/flower.conf`
+Copy this :
 ```
 ; ==================================
 ;  flower supervisor
@@ -398,7 +401,7 @@ stderr_logfile=/home/guillaume/projet-deploy/projectBackEnd/flower_logs/flower-e
 stdout_logfile_maxbytes=50
 stderr_logfile_maxbytes=50
 stdout_logfile_backups=10
-stderr_logfile_backups=10 
+stderr_logfile_backups=10
 autostart=true
 autorestart=true
 startsecs=10
@@ -417,7 +420,7 @@ sudo supervisorctl update
 sudo supervisorctl start flower
 ```
 
-Create a new user flower : 
+Create a new user flower :
 ```
 sudo sh -c "echo -n 'guillaume:' >> /etc/nginx/.htpasswd"
 ```
