@@ -84,6 +84,14 @@ For preprod, if you have the error message `remote: fatal: You are on a branch y
 Got to server in the git projet and in the HEAD file, replace master by the name of your branch
 
 Then create the .env file into app/main with :
+```
+ENV_CONFIG=prod
+
+LOCAL_DATABASE_URL=postgresql:///PROJECT_ranking
+
+DATABASE_URL=postgresql:///PROJECT_ranking
+```
+
 ENV_CONFIG=        prod
 LOCAL_DATABASE_URL=postgresql:///NAME_DATABASE
 
@@ -103,7 +111,7 @@ ALTER ROLE guillaume SET default_transaction_isolation TO 'read committed';
 ALTER ROLE guillaume SET timezone TO 'UTC';
 GRANT ALL PRIVILEGES ON DATABASE nom_db TO guillaume;
 ```
-### Django Installation
+### Flask Installation
 Go to your deploy folder
 ```
 sudo apt-get update
@@ -123,7 +131,9 @@ pip install -r requirements.txt
 Then remove the migrations folder and run
 ```
 python3 manage.py db init
+
 python3 manage.py db migrate --message "initial database migration"
+
 python3 manage.py db upgrade
 
 ```

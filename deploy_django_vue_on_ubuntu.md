@@ -126,8 +126,10 @@ python manage.py migrate
 ### Deploy Django with nginx and uwsgi
 
 #### Uwsgi deployment
-Install globally uwsgi `sudo -H pip3 install uwsgi`
-Uwsgi needs to use : `/usr/bin//usr/local/bin/uwsgi`
+Check if uwsgi ins installed in virtualenv
+`source .venv/bin/active`
+`uwsgi --version`
+
 Add guillaume to www-data group `sudo usermod -a -G www-data guillaume`
 
 Go to your backend folder and create `nano uwsgi_params` with :
@@ -180,7 +182,7 @@ Description=uWSGI Emperor service
 
 [Service]
 ExecStartPre=/bin/bash -c 'mkdir -p /run/uwsgi; chown guillaume:www-data /run/uwsgi'
-ExecStart=/usr/local/bin/uwsgi --emperor /etc/uwsgi/sites
+ExecStart=/home/guillaume/project-deploy/.venv/bin/uwsgi --emperor /etc/uwsgi/sites
 Restart=always
 KillSignal=SIGQUIT
 Type=notify
@@ -326,13 +328,26 @@ server {
 }
 ```
 
+Then run `sudo ln -s /home/guillaume/project-deploy/webapp/project_nginx.conf /etc/nginx/sites-enabled/`
+Restart nginx : `sudo systemctl restart nginx` and check `sudo systemctl status nginx`
+
+Now in the post-receive, you need to add
+```
+echo "Install all dependencies"
+npm install --prefix /home/guillaume/project-deploy/project-front-end/
+echo "Dependencies installed"
+echo "Build the vue project"
+npm run build --prefix /home/guillaume/project-deploy/project-front-end/
+echo "Vue project built"
+
+```
 ## 5. Celery configuration
 [Link 1](https://dev.to/idrisrampurawala/deploying-django-with-celery-and-redis-on-ubuntu-3fo6)
 Install redis `sudo apt-get install redis-server` and enable it `sudo systemctl enable redis-server.service`
 
 Install supervisor `sudo apt-get install supervisor`
 
-Create the celery logs file `nano /home/guillaume/project-deploy/projectBackEnd/celery_logs`
+Create the celery logs file `mkdir /home/guillaume/project-deploy/projectBackEnd/celery_logs`
 Create a celery conf with `sudo nano /etc/supervisor/conf.d/celery_worker.conf` and add into the file
 ```
 ; ==================================
