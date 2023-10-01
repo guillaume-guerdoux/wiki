@@ -18,18 +18,19 @@ Check the google-chrome installation
 google-chrome --version
 ```
 
-Go to this page https://chromedriver.chromium.org/downloads and copy paste
+Go to this page [https://chromedriver.chromium.org/downloads](https://chromedriver.chromium.org/downloads) and copy paste
 the chromedriver link for your google-chrome version (for example
 https://chromedriver.storage.googleapis.com/95.0.4638.54/chromedriver_linux64.zip)
 
 Go to root folter and run
 ```
 wget LINK
-unzip chromedriver_linux64.zip
-sudo mv chromedriver /usr/bin/chromedriver
+unzip chromedriver-linux64.zip
+sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
 sudo chown root:root /usr/bin/chromedriver
 sudo chmod +x /usr/bin/chromedriver
-rm chromedriver_linux64.zip
+rm -r chromedriver-linux64
+rm chromedriver-linux64.zip
 ```
 
 Test your selenium --> It should work !
