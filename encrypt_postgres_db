@@ -134,69 +134,70 @@ sudo chmod 400 /root/pg_luks.key
 sudo cryptsetup luksAddKey /secure/pgdata.img /root/pg_luks.key
 ```
 
-### 3. Configure /etc/crypttab for auto-unlock
+### Step 2 — Create systemd service to set up loop + unlock + mount
 Edit:
 
 ```
-sudo nano /etc/crypttab
+sudo nano /etc/systemd/system/pgdata.service
+
 ```
 
 Add:
 ```
-pgcrypt /dev/loop10 /root/pg_luks.key luks,x-systemd.requires=pgdata-loop.service
-
-```
-### ✅ Step 2 — Create the loop device service
-```
-sudo nano /etc/systemd/system/pgdata-loop.service
-```
-
-```
 [Unit]
-Description=Setup loop device for PostgreSQL data
-Before=cryptsetup.target
-DefaultDependencies=no
+Description=Setup PostgreSQL encrypted data
+After=local-fs.target
+Before=postgresql@12-main.service
+Wants=postgresql@12-main.service
 
 [Service]
 Type=oneshot
-ExecStart=/sbin/losetup /dev/loop10 /secure/pgdata.img
-ExecStop=/sbin/losetup -d /dev/loop10
+ExecStart=/usr/local/bin/mount_pgdata.sh
 RemainAfterExit=yes
 
 [Install]
-WantedBy=cryptsetup.target
+WantedBy=multi-user.target
+
+
+```
+### Step 3 — Create the script /usr/local/bin/mount_pgdata.sh
+```
+sudo nano /usr/local/bin/mount_pgdata.sh
 ```
 
 ```
-sudo systemctl enable pgdata-loop
+#!/bin/bash
+# Step 2: Unlock LUKS container
+sudo cryptsetup luksOpen /secure/pgdata.img pgcrypt --key-file /root/pg_luks.key
+
+# Step 3: Mount filesystem read-write
+sudo mount -o rw /dev/mapper/pgcrypt /mnt/pgdata_crypt
 ```
 
-### ✅ Step 3 — Configure /etc/crypttab
 ```
-sudo nano /etc/crypttab
+sudo chmod +x /usr/local/bin/mount_pgdata.sh
+```
+
+### Step 4 — Ensure PostgreSQL waits for it
+```
+sudo systemctl edit postgresql@12-main
 ```
 
 Add this:
 
 ```
-pgcrypt /dev/loop10 /root/pg_luks.key luks,x-systemd.requires=pgdata-loop.service
+[Unit]
+After=mnt-pgdata_crypt.mount
+Requires=mnt-pgdata_crypt.mount
 
 ```
 
-### ✅ Step 4 — Configure /etc/fstab
+### Step 5 — Enable the service
 ```
-sudo nano /etc/fstab
-```
+sudo systemctl daemon-reload
+sudo systemctl enable pgdata.service
+sudo systemctl enable postgresql@12-main
 
-Add
-```
-/dev/mapper/pgcrypt /mnt/pgdata_crypt ext4 defaults,nofail 0 2
-
-```
-
-### ✅ Step 5 — Update initramfs
-```
-sudo update-initramfs -u
 ```
 
 ### 🔄 Step 6 — Reboot and test
