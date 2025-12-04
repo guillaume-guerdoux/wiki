@@ -1,0 +1,202 @@
+##⭐ OPTION 1 — Create an encrypted container for PostgreSQL
+### Step 1 — Create a directory to store the encrypted file
+
+```
+sudo mkdir /secure
+```
+
+### Step 2 — Create a 10GB encrypted container file
+
+(Adjust size based on your actual DB size)
+
+```
+sudo dd if=/dev/zero of=/secure/pgdata.img bs=1M count=10000
+```
+
+### Step 3 — Encrypt the container with LUKS
+
+```
+sudo cryptsetup luksFormat /secure/pgdata.img
+```
+Open it:
+
+```
+sudo cryptsetup open /secure/pgdata.img pgdata_crypt
+```
+
+Now you have a device:
+```
+/dev/mapper/pgdata_crypt
+```
+
+### Step 4 — Format it
+```
+sudo mkfs.ext4 /dev/mapper/pgdata_crypt
+```
+
+### Step 5 — Create mount point
+```
+sudo mkdir /mnt/pgdata_crypt
+```
+
+Mount it:
+
+```
+sudo mount /dev/mapper/pgdata_crypt /mnt/pgdata_crypt
+```
+
+Give permissions
+```
+sudo chown -R postgres:postgres /mnt/pgdata_crypt
+sudo chmod 700 /mnt/pgdata_crypt
+```
+
+### Step 6 — Stop PostgreSQL
+
+```
+sudo systemctl stop postgresql
+```
+
+### Step 7 — Move PostgreSQL’s data directory
+Find your data directory:
+```
+sudo -u postgres psql -c "show data_directory;"
+```
+
+Move it:
+
+```
+sudo rsync -av /var/lib/postgresql/15/main/ /mnt/pgdata_crypt/
+```
+
+Rename original folder to avoid conflicts:
+```
+sudo mv /var/lib/postgresql/15/main /var/lib/postgresql/15/main.bak
+```
+
+### Step 8 — Update PostgreSQL config
+Edit
+```
+/etc/postgresql/15/main/postgresql.conf
+```
+
+Find:
+```
+data_directory = '/var/lib/postgresql/15/main'
+```
+
+Replace:
+
+```
+data_directory = '/mnt/pgdata_crypt/main'
+```
+
+### Step 9 — Start PostgreSQL again
+```
+sudo systemctl start postgresql
+```
+
+
+## Restart server - How to unlock it
+
+### ✅ 1. Unlock the LUKS encrypted device
+```
+sudo cryptsetup open /secure/pgdata.img pgcrypt
+```
+
+### ✅ 2. Mount the decrypted filesystem
+```
+sudo mount /dev/mapper/pgcrypt /mnt/pgdata_crypt
+```
+
+###✅ 3. Start PostgreSQL
+
+Once the encrypted volume is mounted, start the database:
+```
+sudo systemctl start postgresql@12-main
+```
+
+```
+sudo systemctl status postgresql@12-main
+```
+
+## Set up an automatic mount on restart
+### Option 1 — Auto-unlock with a local keyfile (Most common, fully automatic)
+
+### 1. Generate a keyfile
+```
+sudo dd if=/dev/urandom of=/root/pg_luks.key bs=4096 count=1
+sudo chmod 400 /root/pg_luks.key
+```
+
+### 2. Add the keyfile to the LUKS volume
+```
+sudo cryptsetup luksAddKey /secure/pgdata.img /root/pg_luks.key
+```
+
+### 3. Configure /etc/crypttab for auto-unlock
+Edit:
+
+```
+sudo nano /etc/crypttab
+```
+
+Add:
+```
+pgcrypt /dev/sdb1 /root/pg_luks.key luks
+```
+### ✅ Step 2 — Create the loop device service
+```
+sudo nano /etc/systemd/system/pgdata-loop.service
+```
+
+```
+[Unit]
+Description=Setup loop device for PostgreSQL data
+Before=cryptsetup.target
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/sbin/losetup /dev/loop10 /secure/pgdata.img
+ExecStop=/sbin/losetup -d /dev/loop10
+RemainAfterExit=yes
+
+[Install]
+WantedBy=cryptsetup.target
+```
+
+```
+sudo systemctl enable pgdata-loop
+```
+
+### ✅ Step 3 — Configure /etc/crypttab
+```
+sudo nano /etc/crypttab
+```
+
+Add this:
+
+```
+pgcrypt /dev/loop10 /root/pg_luks.key luks
+```
+
+### ✅ Step 4 — Configure /etc/fstab
+```
+sudo nano /etc/fstab
+```
+
+Add
+```
+/dev/mapper/pgcrypt /mnt/pgdata_crypt ext4 defaults 0 2
+```
+
+### ✅ Step 5 — Update initramfs
+```
+sudo update-initramfs -u
+```
+
+### 🔄 Step 6 — Reboot and test
+```
+sudo reboot
+```
